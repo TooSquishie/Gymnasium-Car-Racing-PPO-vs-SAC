@@ -25,14 +25,15 @@ def build_model(algo: str, vec_env, logdir: str, seed: int):
             tensorboard_log=logdir,
             seed=seed,
             device="cuda",
-            learning_rate=3e-4,
-            n_steps=2048,         # rollout length
-            batch_size=64,
+            learning_rate = 1e-4,
+            n_steps=4096,         # rollout length
+            batch_size=128,
             gamma=0.99,
-            gae_lambda=0.95,
-            clip_range=0.2,
-            ent_coef=0.01,
-            n_epochs=4,
+            gae_lambda=0.9,
+            clip_range=0.1,
+            ent_coef=0.02,
+            n_epochs=3,
+            vf_coef=1.0,
             max_grad_norm=0.5,
         )
     elif algo == "sac":

@@ -18,9 +18,9 @@ def main():
     env = make_car_env(seed=args.seed, render_mode="human")
     
     if args.algo == "ppo":
-        model = PPO.load(args.checkpoint)
+        model = PPO.load(args.checkpoint, device="cuda")
     else:
-        model = SAC.load(args.checkpoint)
+        model = SAC.load(args.checkpoint, device="cuda")
 
     for ep in range(args.episodes):
         obs, info = env.reset()
