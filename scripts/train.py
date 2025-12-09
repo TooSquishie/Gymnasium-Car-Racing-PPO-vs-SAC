@@ -7,9 +7,9 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
 
-def make_vec_env(seed: int, hardmode: bool):
+def make_vec_env(seed: int, hard_mode: bool):
     def _make():
-        env = make_car_env(seed=seed, render_mode=None, hard_mode=hardmode)
+        env = make_car_env(seed=seed, render_mode=None, hard_mode=hard_mode)
         env = Monitor(env)
         return env
     
@@ -24,6 +24,7 @@ def build_model(algo: str, vec_env, logdir: str, seed: int):
             verbose=1,
             tensorboard_log=logdir,
             seed=seed,
+            device="cuda",
             learning_rate=3e-4,
             n_steps=2048,         # rollout length
             batch_size=64,
@@ -42,6 +43,7 @@ def build_model(algo: str, vec_env, logdir: str, seed: int):
             verbose=1,
             tensorboard_log=logdir,
             seed=seed,
+            device="cuda",
             learning_rate=3e-4,
             buffer_size=1_000_000,
             batch_size=256,

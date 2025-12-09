@@ -112,6 +112,67 @@ class EarlyTerminateOffTrack(gym.Wrapper):
             
         return obs, reward, terminated, truncated, info
 
+class StuckPenaltyWrapper(gym.Wrapper):
+    """
+    Penalize the agent for staying in roughly the same visual position
+    (e.g., spinning in place doing donuts) for too many steps.
+    Works on the processed stacked observation (C, H, W).
+    """
+
+    def __init__(
+        self,
+        env,
+        diff_threshold: float = 2.0,
+        max_stuck_steps: int = 40,
+        penalty_per_step: float = -0.1,
+        terminate_when_stuck: bool = True,
+    ):
+        super().__init__(env)
+        self.diff_threshold = diff_threshold
+        self.max_stuck_steps = max_stuck_steps
+        self.penalty_per_step = penalty_per_step
+        self.terminate_when_stuck = terminate_when_stuck
+
+        self.prev_frame = None
+        self.stuck_steps = 0
+
+    def reset(self, **kwargs):
+        self.prev_frame = None
+        self.stuck_steps = 0
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+
+        # obs is (C, H, W); just compare the last channel or the mean
+        current = obs[-1]  # last frame in the stack
+
+        if self.prev_frame is not None:
+            diff = np.mean(np.abs(current.astype(np.float32) - self.prev_frame.astype(np.float32)))
+
+            # If the frame isn't changing much and the reward is not very positive,
+            # we consider this "stuck / donut" behaviour.
+            if diff < self.diff_threshold and reward <= 0.1:
+                self.stuck_steps += 1
+            else:
+                self.stuck_steps = 0
+        else:
+            diff = None
+            self.stuck_steps = 0
+
+        self.prev_frame = current
+
+        # Apply penalty if stuck for too long
+        if self.stuck_steps >= self.max_stuck_steps:
+            reward += self.penalty_per_step
+            if self.terminate_when_stuck:
+                truncated = True  # end the episode
+
+        # You can optionally log diagnostic info into 'info'
+        info["stuck_steps"] = self.stuck_steps
+        return obs, reward, terminated, truncated, info
+
+
 def make_car_env(seed: int | None = None, render_mode: str | None = None, hard_mode: bool = False):
     """
     Base CarRacing environment + preprocessing wrapper.
@@ -133,5 +194,7 @@ def make_car_env(seed: int | None = None, render_mode: str | None = None, hard_m
         env = ActionNoise(env, sigma=0.05)
         env = ActionDelay(env, delay=2)
         env = EarlyTerminateOffTrack(env, patience=30)
-        
+    
+    env = StuckPenaltyWrapper(env, diff_threshold=2.0, max_stuck_steps=40, penalty_per_step=-0.1, terminate_when_stuck=True)
+    
     return env
